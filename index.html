@@ -54,6 +54,7 @@
     </div>
 
     <div id="map" style="height: 100vh; width: 100vw; z-index: 0"></div>
+	<div class="tooltip" style="display: none;"></div>
 
 
 	<div id="heatmapLegend">
@@ -101,6 +102,16 @@
           }
         };
 
+		var tooltip = document.querySelector('.tooltip')
+		function updateTooltip(x, y, value) {
+			// + 15 for distance to cursor
+			var transl = 'translate(' + (x + 15) + 'px, ' + (y + 15) + 'px)';
+			tooltip.style.webkitTransform = transl;
+			tooltip.innerHTML = value;
+		};
+
+		
+
 		var cfg = {
 			// radius should be small ONLY if scaleRadius is true (or small radius is intended)
 			// if scaleRadius is false it will be the constant radius used in pixels
@@ -137,6 +148,8 @@
 
 		var map = L.map('map', {crs: L.CRS.EPSG2056}).setView([47.3687017, 8.5282378,], 8);
 
+		
+
 		var current_style = livehoods_style;
 
 		var swissLayer = L.tileLayer.swiss().addTo(map);
@@ -146,6 +159,28 @@
 		}).addTo(map);
 
 		var heatmapLayer = new HeatmapOverlay(cfg);
+
+		var map_wrapper = document.querySelector('#map')
+		console.log(heatmapLayer)
+		map_wrapper.onmousemove = function(ev) {
+			if (heatmapLayer._heatmap){
+				var x = ev.layerX;
+				var y = ev.layerY;
+				// getValueAt gives us the value for a point p(x/y)
+				
+				var value = heatmapLayer._heatmap.getValueAt({
+					x: x,
+					y: y
+				});
+				console.log(value)
+				tooltip.style.display = 'block';
+				updateTooltip(x, y, value);
+			}
+		};
+
+		map.onmouseout = function() {
+			tooltip.style.display = 'none';
+		};
 
 		map.addLayer(heatmapLayer); 
 		
