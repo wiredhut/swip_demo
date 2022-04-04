@@ -146,7 +146,7 @@
 	 	
 		var accessToken = 'pk.eyJ1IjoiYXJ0ZW1rb251Y2hvdndpcmVkaHV0IiwiYSI6ImNsMWo3amg3czBtMmUzYnFsNHFhMHZiMWQifQ.sWe8oS5qb0EfQeDd-oq_hQ';
 
-		var map = L.map('map', {crs: L.CRS.EPSG2056}).setView([47.3687017, 8.5282378,], 8);
+		var map = L.map('map', {crs: L.CRS.EPSG2056, minZoom:14, maxZoom:22}).setView([47.3687017, 8.5282378,], 19);
 
 		
 
@@ -161,7 +161,6 @@
 		var heatmapLayer = new HeatmapOverlay(cfg);
 
 		var map_wrapper = document.querySelector('#map')
-		console.log(heatmapLayer)
 		map_wrapper.onmousemove = function(ev) {
 			if (heatmapLayer._heatmap){
 				var x = ev.layerX;
