@@ -148,21 +148,17 @@
 		//show loading
 		function displayLoading() {
 			loader.classList.add("display")
-			setTimeout(() => {
-				loader.classList.remove("display");
-			}, 15000);
 		}
 
 		//hiding loading
 		function hideLoading() {
 			loader.classList.remove("display");
-			console.log('out');
 		}
 
 
 		$('*[name=date]').on('change', function(){
 			displayLoading();
-			const query = `http://3.249.177.242/hourly_dwell_density?date_time=${this.value}`;
+			const query = `https://swip.red5.ai/hourly_dwell_density?date_time=${this.value}`;
 			fetch(query)
 				.then(response => response.json())
 				.then((json) => {
