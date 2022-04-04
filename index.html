@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>
+		Livehoods-SPB
+	</title>
+
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+	integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
+	crossorigin=""/>
+
+	<!-- JQuery-->
+	<script type="text/javascript" src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+
+	<!-- data picker -->
+	<script src="jquery.simple-dtpicker.js"></script>
+	<link type="text/css" href="jquery.simple-dtpicker.css" rel="stylesheet" />
+
+   <!-- Make sure you put this AFTER Leaflet's CSS -->
+   <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
+   integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
+   crossorigin=""></script>
+
+
+   <link rel="stylesheet" type="text/css" href="main.css">
+   
+   <link href="https://fonts.googleapis.com/css?family=Noto+Sans:400,400i,700,700i&amp;subset=cyrillic"
+          rel="stylesheet">
+
+	<script src="heatmap.js"></script>
+	<script src="leaflet-heatmap.js"></script>
+
+	<script src="https://unpkg.com/leaflet-tilelayer-swiss@2.2.1/dist/Leaflet.TileLayer.Swiss.umd.js" crossorigin
+          integrity="sha384-euGDvW95PJJoBC7xefx6xWF1eZt1Y2HskqSURUUZgd+ND6QEVSt9VKPdzl82hDQq"></script>
+</head>
+<body>
+	
+
+	<div class="headerInfo" onclick="toggleDescription(true)">
+    	<div class='header'>SWIP DEMO</div>
+    	<div class='project_info' onclick="toggleDescription(true)"><img src="./src/info.svg" style="width:35px;height:35px;center"></div>
+    </div>
+    
+    <div id='description'>
+      <div class="tab">
+        <div class="tablinks" onclick="openTab(event,'project')" id="defaultOpen"> SWIP DEMO</div>
+        <!--<div class="tablinks" onclick="openTab(event,'method')"> МЕТОДОЛОГИЯ</div> -->
+        <button id="closeButton" class="tablinks" onclick="toggleDescription(false)">
+          <img src="./src/close.svg" style="width:33px;height:28px;">
+        </button>
+      </div>
+      <div id="project" class="tabcontent">
+		Date:<input type="text" name="date" value="">
+		<div id="loading"></div>
+      </div>
+    </div>
+
+    <div id="map" style="height: 100vh; width: 100vw; z-index: 0"></div>
+
+<!--
+	<div class="info">
+	 	<!--
+	 	<p><input name='layer' type='radio' value='qullab' checked> Qullab algorithm<p>
+	 	<p><input name='layer' type='radio' value='livehoods'> Livehoods algorithm</p>
+	 	-->
+
+	 	<!--<p id='selected_area'> Selected area - click to select</p> -->
+	 	<!--
+	 	<svg id="clusters_sim" style= "height:50px; width:200px;">
+	 		<g id = "sim_bar"></g>
+	 		<g id = "text"></g>
+	 	</svg>
+	 	
+	 	<p id='hovered_area'> Selected area - hover to select </p>
+	 	<svg id="functions_barchart" style="height: 200px; width:230px">
+	 		<g id = 'bars'></g>
+	 		<g id = 'text'></g>
+	 	</svg>
+	 </div> -->
+
+	<script>
+	  $(function(){
+		$('*[name=date]').appendDtpicker({
+			"dateFormat":"YY-MM-DDThh:mm",
+			"inline":true,
+			"minuteInterval": 60
+		});
+		});
+
+		var cfg = {
+			// radius should be small ONLY if scaleRadius is true (or small radius is intended)
+			// if scaleRadius is false it will be the constant radius used in pixels
+			"radius": 0.000015,
+			"maxOpacity": .8,
+			// scales the radius based on map zoom
+			"scaleRadius": true,
+			// if set to false the heatmap uses the global maximum for colorization
+			// if activated: uses the data maximum within the current map boundaries
+			//   (there will always be a red spot with useLocalExtremas true)
+			"useLocalExtrema": false,
+			// which field name in your data represents the latitude - default "lat"
+			latField: 'y',
+			// which field name in your data represents the longitude - default "lng"
+			lngField: 'x',
+			// which field name in your data represents the data value - default "value"
+			valueField: 'score'
+			};
+					
+					
+			
+	</script>
+
+
+	 <script type="text/javascript">
+
+	 	livehoods_style = 'mapbox://styles/artemkonuchovwiredhut/cl1j7more00lf14o300x3xmvi';
+	 	
+		var accessToken = 'pk.eyJ1IjoiYXJ0ZW1rb251Y2hvdndpcmVkaHV0IiwiYSI6ImNsMWo3amg3czBtMmUzYnFsNHFhMHZiMWQifQ.sWe8oS5qb0EfQeDd-oq_hQ';
+
+		
+
+		var map = L.map('map', {crs: L.CRS.EPSG2056}).setView([47.3687017, 8.5282378,], 8);
+
+		var current_style = livehoods_style;
+
+		/*
+		L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
+			attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+			maxZoom: 18,
+			id: 'mapbox/streets-v11',
+			tileSize: 512,
+			zoomOffset: -1,
+			accessToken: accessToken
+		}).addTo(map);
+		*/
+		var swissLayer = L.tileLayer.swiss().addTo(map);
+
+		L.control.zoom({
+		     position:'bottomright'
+		}).addTo(map);
+
+		var heatmapLayer = new HeatmapOverlay(cfg);
+		map.addLayer(heatmapLayer); 
+		
+
+		const loader = document.querySelector("#loading")
+		
+		//show loading
+		function displayLoading() {
+			loader.classList.add("display")
+			setTimeout(() => {
+				loader.classList.remove("display");
+			}, 15000);
+		}
+
+		//hiding loading
+		function hideLoading() {
+			loader.classList.remove("display");
+			console.log('out');
+		}
+
+
+		$('*[name=date]').on('change', function(){
+			displayLoading();
+			const query = `http://3.249.177.242/hourly_dwell_density?date_time=${this.value}`;
+			fetch(query)
+				.then(response => response.json())
+				.then((json) => {
+					data = {
+						max:300,
+						data: json
+					}
+					heatmapLayer.setData(data);
+					hideLoading();
+				})
+		});
+
+		/*
+		var areas_layer = L.geoJSON(areas, {
+			onEachFeature: onEachAreaFeature,
+
+			style: function(feature) {
+
+				var style = {opacity: 0, fillOpacity: 0};
+
+				var color =  "#000";
+
+		    	style["color"] = color;
+
+		    	return style;
+			},
+
+		}).addTo(map);
+		*/
+
+		
+
+		function dropHiglite(){
+			areas.setStyle({
+				opacity: 0,
+				fillOpacity: 0
+			})
+		}
+
+
+		function zoomToFeature(e) {
+		    map.fitBounds(e.target.getBounds());
+		}	
+
+		function highliteArea(e){
+
+			if (current_area_id != e.target.feature.properties.value){
+				updateInfo(e.target.feature.properties);
+			}
+		   
+		}
+
+		function selectArea(e){
+			updateSelectedInfo(e.target.feature.properties);
+			
+		}
+
+
+
+		function onEachAreaFeature(feature, layer){
+
+			layer.on({
+				mouseover: highliteArea,
+				click: selectArea
+			})
+
+		};
+	
+
+
+		//hover level
+
+		var geojsonMarkerOptions = {
+			    radius: 5,
+			    color: "#000",
+			    weight: 1,
+			    opacity: 1,
+			    fillOpacity: 0.8
+			};
+
+		function onEachVenueFeature(feature, layer) {
+			var popupContent = ""
+
+			if (feature.properties && feature.properties.title) {
+				popupContent += feature.properties.title;
+			}
+
+			layer.bindPopup(popupContent);
+		}
+
+		
+
+		//info control
+
+		
+
+ 		function getAreaId(props){
+ 			var id
+
+ 			if(props){
+ 				id = props.value.toString();
+ 			}
+
+ 			return id;
+ 		}
+
+ 		function getFuncData(props){
+ 			var data = {};
+
+ 			if(props){
+ 				data["Arts & Entertainment"] = props["Arts & Entertainment"];
+ 				data["College & University"] = props["College & University"];
+ 				data["Food"] = props["Food"];
+ 				data["Nightlife Spot"] = props["Nightlife Spot"];
+ 				data["Outdoors & Recreation"] = props["Outdoors & Recreation"];
+ 				data["Professional & Other Places"] = props["Professional & Other Places"];
+ 				data["Residence"] = props["Residence"];
+ 				data["Shop & Service"] = props["Shop & Service"];
+ 				data["Travel & Transport"] = props["Travel & Transport"];
+ 			}
+
+ 			return data;
+ 		}
+
+
+ 		function getAreaData(props){
+ 			
+ 			var func = getFuncData(props);
+
+ 			var data = [];
+
+ 			if (func) {
+ 				Object.keys(func).forEach(function(key,index){
+ 					newObj = {"name": key, "number": func[key]};
+ 					data.push(newObj);
+ 				})
+ 			}
+
+ 			return data;
+ 		}
+ 		
+ 		function getBarText(d,t){
+ 			return t.toString() + " " + d.toString();
+ 		}
+
+
+		function updateInfo(props){
+
+			if (props){
+			
+				var id  = getAreaId(props);
+				var data = getAreaData(props);
+				var func = getFuncData(props);
+
+				var hovered_venues = venues['features'].filter(function(f){return f["properties"]["label"] == id})
+
+				var color = hovered_venues ? hovered_venues[0].properties.color : "blue"
+
+				if(current_hover_layer) {current_hover_layer.remove();}
+				
+				current_hover_layer = L.geoJSON(hovered_venues, {
+					onEachFeature: onEachVenueFeature,
+
+					pointToLayer: function (feature, latlng) {
+		        		return L.circleMarker(latlng, geojsonMarkerOptions);
+		    		},
+
+		    		style: function(feature) {
+		    			var style = {};
+		    			//style["fillColor"] = getColor(feature.properties.label);
+		    			style["fillColor"] = feature.properties.color;
+		    			return style;
+		    		}
+
+				}).addTo(map);
+
+				area_id = d3.select('.info #hovered_area').text("Hovered area - " + id);
+
+				var bars = d3.select('#functions_barchart #bars').selectAll('.bar').data(data);
+
+				bars.exit().remove();
+				
+				bars.enter().append('rect').attr("class", "bar");
+						
+			    bars.transition()
+			    	.duration(100)
+			    	.attr("x", function(d){ return 0; })
+					.attr("y", function(d){ return y(d.name)})
+					.attr("width", function(d) {return x(d.number)})
+					.attr("height", y.bandwidth())
+					.attr("fill", color)
+
+				var text = d3.select('#functions_barchart #text').selectAll('text')
+					.each(function(e, i){
+				        //console.log(data[i].number)
+				        d3.select(this).text(data[i].name + " (" + data[i].number + ")")
+				    })
+
+				current_area_id = id;
+
+				//show_sim(selected_area_id, current_area_id);
+
+				
+
+		    }
+		};
+
+		function updateSelectedInfo(props){
+			if (props){
+			
+				var id  = getAreaId(props);
+				var data = getAreaData(props);
+				var func = getFuncData(props);
+
+				var selected_venues = venues['features'].filter(function(f){return f["properties"]["label"] == id})
+
+				var color = selected_venues ? selected_venues[0].properties.color : "red"
+
+				if(current_selected_layer) {current_selected_layer.remove();}
+
+				current_selected_layer= L.geoJSON(selected_venues, {
+					onEachFeature: onEachVenueFeature,
+
+					pointToLayer: function (feature, latlng) {
+		        		return L.circleMarker(latlng, geojsonMarkerOptions);
+		    		},
+
+		    		style: function(feature) {
+		    			var style = {};
+		    			//style["fillColor"] = getColor(feature.properties.label);
+		    			style["fillColor"] = feature.properties.color;
+		    			return style;
+		    		}
+
+				}).addTo(map);
+
+				area_id = d3.select('.info #selected_area').text("Selected area - " + id);
+
+				var bars = d3.select('#functions_barchart #bars').selectAll('.selected_bar').data(data);
+
+				bars.exit().remove();
+
+				bars.enter().append('rect').attr("class", "selected_bar");
+						
+			    bars.transition()
+			    	.duration(100)
+			    	.attr("x", function(d){ return 0; })
+					.attr("y", function(d){ return y(d.name) - y.bandwidth() * 2})
+					.attr("fill", color)
+					.attr("width", function(d) {return x(d.number)})
+					.attr("height", y.bandwidth())
+
+				selected_area_id = id;
+
+		    }
+		}
+
+		
+
+		function show_sim(selected_area_num, hovered_area_num){
+			if (selected_area_num != -1 && hovered_area_num != -1){
+				var data = [clusters_sim[selected_area_num][hovered_area_num]];
+
+				var sim_bar = d3.select("#clusters_sim #sim_bar").selectAll('.sim_bar').data(data);
+
+				sim_bar.exit().remove();
+
+				sim_bar.enter().append('rect').attr("class", "sim_bar");
+
+				sim_bar.transition()
+					.duration(100)
+					.attr("x", function(d){ return 0; })
+					.attr("y", function(d){ return 0; })
+					.attr("fill", "red")
+					.attr("width", function(d) {return sim_scale(d)})
+					.attr("height", y.bandwidth() * 2)
+
+				var sim_text = d3.select("#clusters_sim #text").selectAll('text').data(data);
+
+				sim_text.exit().remove();
+
+				sim_text.enter().append('text')
+				sim_text.transition()
+					.attr("x", function(d) {return 0;})
+					.attr("y", function(d) {return y.bandwidth() * 2;})
+					.attr("height", y.bandwidth())
+					.text(function(d){return "clusters similarity index - " + d})
+
+			}
+		}
+
+		function toggleDescription(show) {
+		  if(show) { description.style.left="0"; }
+		  else { description.style.left="-100%"; }
+		}
+
+
+		function openTab(evt,tabName) {
+		      var i, tabcontent, tablinks;
+		      tabcontent = document.getElementsByClassName("tabcontent");
+		      for (i = 0; i < tabcontent.length; i++) {
+		          tabcontent[i].style.display = "none";
+		      }
+		      tablinks = document.getElementsByClassName("tablinks");
+		    for (i = 0; i < tablinks.length; i++) {
+		        tablinks[i].className = tablinks[i].className.replace(" active", "");
+		    }
+		    document.getElementById(tabName).style.display = "block";
+		    evt.currentTarget.className += " active";
+		}
+
+	 </script>
+
+
+</body>
+</html>
