@@ -217,7 +217,6 @@
 
 	
 	<script type="text/javascript">
-		/*
 		//Fill zone dropdown with
 		let zone_dropdown = $("#zones")
 		zone_dropdown.empty();
@@ -225,12 +224,6 @@
 		zone_dropdown.prop('selectedIndex', 0);
 
 		const url = 'https://swip.wiredhut.com/api/zones'
-		fetch(url)
-			.then(response => response.json())
-			.then((json) => {
-				console.log(json)
-			})
-
 			
 		$.getJSON(url, function (data) {
 			$.each(data, function (key, entry) {
@@ -249,7 +242,6 @@
 				map.setView(L.CRS.EPSG21781.unproject(L.point(first_component['x'], first_component['y'])), 18);
 			})
 		});
-		*/
 	</script> 
 
 
