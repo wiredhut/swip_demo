@@ -223,14 +223,22 @@
 		zone_dropdown.append('<option selected="true" disabled>Choose zone</option>');
 		zone_dropdown.prop('selectedIndex', 0);
 
-		const url = 'https://swip.wiredhut.com/api/zones'
-			
+		/*
 		$.getJSON(url, function (data) {
 			$.each(data, function (key, entry) {
 				zone_dropdown.append($('<option></option>').attr('value', entry['id']).text(entry['id']));
 			})
 		});
-		
+		*/
+
+		const url = 'https://swip.wiredhut.com/api/zones'
+		fetch(url)
+			.then(response => response.json())
+			.then((json) => {
+				console.log(json)
+			})
+
+		/*
 
 		$('#zones').on('change', function(){
 			//get zone geometry
@@ -242,6 +250,7 @@
 				map.setView(L.CRS.EPSG21781.unproject(L.point(first_component['x'], first_component['y'])), 18);
 			})
 		});
+		*/
 	</script> 
 
 
