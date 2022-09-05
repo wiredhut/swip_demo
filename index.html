@@ -223,12 +223,19 @@
 		zone_dropdown.prop('selectedIndex', 0);
 
 		const url = 'https://swip.wiredhut.com/api/zones'
-		
+		fetch(url)
+			.then(response => response.json())
+			.then((json) => {
+				console.log(json)
+			})
+
+		/*
 		$.getJSON(url, function (data) {
 			$.each(data, function (key, entry) {
 				zone_dropdown.append($('<option></option>').attr('value', entry['id']).text(entry['id']));
 			})
 		});
+		*/
 
 		$('#zones').on('change', function(){
 			//get zone geometry
