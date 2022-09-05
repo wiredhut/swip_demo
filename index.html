@@ -232,7 +232,7 @@
 		
 		$('#zones').on('change', function(){
 			//get zone geometry
-			const query = `https://swip.wiredhut.com/api/zones/${this.value}/`;
+			const query = `https://swip.wiredhut.com/api/zones/${this.value}`;
 			$.getJSON(query, function(data){
 				var wkt = new Wkt.Wkt()
 				polygon = wkt.read(data['geom'])
@@ -240,7 +240,7 @@
 				map.setView(L.CRS.EPSG21781.unproject(L.point(first_component['x'], first_component['y'])), 18);
 			})
 		});
-		
+
 	</script> 
 
 
