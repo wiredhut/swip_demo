@@ -2,12 +2,12 @@
 <html>
 <head>
 	<title>
-		SWIP DEMO
+		SWIP-DEMO
 	</title>
 
-	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
-	integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
-	crossorigin=""/>
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.8.0/dist/leaflet.css"
+   integrity="sha512-hoalWLoI8r4UszCkZ5kL8vayOGVae1oxXe/2A4AO6J9+580uKHDO3JdHb7NzwwzK5xr/Fs0W40kiNHxM9vyTtQ=="
+   crossorigin=""/>
 
 	<!-- JQuery-->
 	<script type="text/javascript" src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
@@ -17,8 +17,8 @@
 	<link type="text/css" href="jquery.simple-dtpicker.css" rel="stylesheet" />
 
    <!-- Make sure you put this AFTER Leaflet's CSS -->
-   <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
-   integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
+   <script src="https://unpkg.com/leaflet@1.8.0/dist/leaflet.js"
+   integrity="sha512-BB3hKbKWOc9Ez/TAwyWxNXeoV9c1v6FIeYiBieIWkpLjauysF18NzgR1MBNBXf8/KABdlkX68nAhlwcDFLGPCQ=="
    crossorigin=""></script>
 
 
@@ -30,8 +30,9 @@
 	<script src="heatmap.js"></script>
 	<script src="leaflet-heatmap.js"></script>
 
-	<script src="https://unpkg.com/leaflet-tilelayer-swiss@2.2.1/dist/Leaflet.TileLayer.Swiss.umd.js" crossorigin
-          integrity="sha384-euGDvW95PJJoBC7xefx6xWF1eZt1Y2HskqSURUUZgd+ND6QEVSt9VKPdzl82hDQq"></script>
+	<script src="https://unpkg.com/leaflet-tilelayer-swiss@2.0.1/dist/Leaflet.TileLayer.Swiss.umd.js" crossorigin
+        integrity="sha384-QQS8FVB6RhNfzlOqzJV3/V4P6YNJSs49djuAoMAh2NJ5BNaYxPCC1t14fwtcg90/"></script> 
+
 </head>
 <body>
 	<div class="headerInfo" onclick="toggleDescription(true)">
@@ -54,7 +55,6 @@
     </div>
 
     <div id="map" style="height: 100vh; width: 100vw; z-index: 0"></div>
-	<div class="tooltip" style="display: none;"></div>
 
 
 	<div id="heatmapLegend">
@@ -67,7 +67,7 @@
 	<script>
 	  $(function(){
 		$('*[name=date]').appendDtpicker({
-			"dateFormat":"YY-MM-DDThh:mm",
+			"dateFormat":"YYYY-MM-DDThh:mm",
 			"inline":true,
 			"minuteInterval": 60
 		});
@@ -102,16 +102,6 @@
           }
         };
 
-		var tooltip = document.querySelector('.tooltip')
-		function updateTooltip(x, y, value) {
-			// + 15 for distance to cursor
-			var transl = 'translate(' + (x + 15) + 'px, ' + (y + 15) + 'px)';
-			tooltip.style.webkitTransform = transl;
-			tooltip.innerHTML = value;
-		};
-
-		
-
 		var cfg = {
 			// radius should be small ONLY if scaleRadius is true (or small radius is intended)
 			// if scaleRadius is false it will be the constant radius used in pixels
@@ -124,11 +114,11 @@
 			//   (there will always be a red spot with useLocalExtremas true)
 			"useLocalExtrema": false,
 			// which field name in your data represents the latitude - default "lat"
-			latField: 'y',
+			latField: 'x',
 			// which field name in your data represents the longitude - default "lng"
-			lngField: 'x',
+			lngField: 'y',
 			// which field name in your data represents the data value - default "value"
-			valueField: 'score',
+			valueField: 'predicted',
 			onExtremaChange: function onExtremaChange(data) {
 				updateLegend(data);
 			}
@@ -146,39 +136,20 @@
 	 	
 		var accessToken = 'pk.eyJ1IjoiYXJ0ZW1rb251Y2hvdndpcmVkaHV0IiwiYSI6ImNsMWo3amg3czBtMmUzYnFsNHFhMHZiMWQifQ.sWe8oS5qb0EfQeDd-oq_hQ';
 
-		var map = L.map('map', {crs: L.CRS.EPSG2056, minZoom:14, maxZoom:22}).setView([47.3687017, 8.5282378,], 19);
-
-		
+		var map = L.map('map', {crs: L.CRS.EPSG21781});
 
 		var current_style = livehoods_style;
 
-		var swissLayer = L.tileLayer.swiss().addTo(map);
+		var swissLayer = L.tileLayer.swiss({ crs: L.CRS.EPSG21781 }).addTo(map);
+		
+
+		map.setView(L.CRS.EPSG21781.unproject(L.point(682170.102908364962786, 250069.716387805819977)), 18);
 
 		L.control.zoom({
 		     position:'bottomright'
 		}).addTo(map);
 
 		var heatmapLayer = new HeatmapOverlay(cfg);
-
-		var map_wrapper = document.querySelector('#map')
-		map_wrapper.onmousemove = function(ev) {
-			if (heatmapLayer._heatmap){
-				var x = ev.layerX;
-				var y = ev.layerY;
-				// getValueAt gives us the value for a point p(x/y)
-				
-				var value = heatmapLayer._heatmap.getValueAt({
-					x: x,
-					y: y
-				});
-				tooltip.style.display = 'block';
-				updateTooltip(x, y, value);
-			}
-		};
-
-		map.onmouseout = function() {
-			tooltip.style.display = 'none';
-		};
 
 		map.addLayer(heatmapLayer); 
 		
@@ -198,13 +169,21 @@
 
 		$('*[name=date]').on('change', function(){
 			displayLoading();
-			const query = `https://swip.red5.ai/hourly_dwell_density?date_time=${this.value}`;
+			const query = `https://swip.wiredhut.com/api/forecast?zone_id=1&datetime=${this.value}&model=simple`;
 			fetch(query)
 				.then(response => response.json())
-				.then((json) => {
+				.then((json) => { return json.map(function(val){
+					unprojected = L.CRS.EPSG21781.unproject(L.point(val['x'], val['y']))
+					return {
+						"x": unprojected['lat'],
+						"y": unprojected['lng'],
+						"predicted": val['predicted']
+					}
+				})} )
+				.then((unprojected) => {
 					data = {
 						max:500,
-						data: json
+						data: unprojected
 					}
 					heatmapLayer.setData(data);
 					hideLoading();
