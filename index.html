@@ -29,6 +29,7 @@
 
 	<script src="heatmap.js"></script>
 	<script src="leaflet-heatmap.js"></script>
+	<script src="wiket.js"></script>
 
 	<script src="https://unpkg.com/leaflet-tilelayer-swiss@2.0.1/dist/Leaflet.TileLayer.Swiss.umd.js" crossorigin
         integrity="sha384-QQS8FVB6RhNfzlOqzJV3/V4P6YNJSs49djuAoMAh2NJ5BNaYxPCC1t14fwtcg90/"></script> 
@@ -43,12 +44,17 @@
     <div id='description'>
       <div class="tab">
         <div class="tablinks" onclick="openTab(event,'project')" id="defaultOpen"> SWIP DEMO</div>
-        <!--<div class="tablinks" onclick="openTab(event,'method')"> МЕТОДОЛОГИЯ</div> -->
         <button id="closeButton" class="tablinks" onclick="toggleDescription(false)">
           <img src="./src/close.svg" style="width:33px;height:28px;">
         </button>
       </div>
       <div id="project" class="tabcontent">
+		<label for="zones">Zone:</label>
+		<select name="zones" id="zones">
+			<option value="1">1</option>
+			<option value="2">2</option>
+			<option value="5">5</option>
+		</select>
 		Date:<input type="text" name="date" value="">
 		<div id="loading"></div>
       </div>
@@ -123,12 +129,8 @@
 				updateLegend(data);
 			}
 		};
-					
-					
-			
+											
 	</script>
-
-	
 
 	 <script type="text/javascript">
 
@@ -169,7 +171,8 @@
 
 		$('*[name=date]').on('change', function(){
 			displayLoading();
-			const query = `https://swip.wiredhut.com/api/forecast?zone_id=1&datetime=${this.value}&model=simple`;
+			var zone = $("#zones").val()
+			const query = `https://swip.wiredhut.com/api/forecast?zone_id=${zone}&datetime=${this.value}&model=simple`;
 			fetch(query)
 				.then(response => response.json())
 				.then((json) => { return json.map(function(val){
@@ -211,6 +214,34 @@
 		}
 
 	 </script>
+
+	<script type="text/javascript">
+		//Fill zone dropdown with
+		let zone_dropdown = $("#zones")
+		zone_dropdown.empty();
+		zone_dropdown.append('<option selected="true" disabled>Choose zone</option>');
+		zone_dropdown.prop('selectedIndex', 0);
+
+		const url = 'https://swip.wiredhut.com/api/zones'
+		
+		$.getJSON(url, function (data) {
+			$.each(data, function (key, entry) {
+				zone_dropdown.append($('<option></option>').attr('value', entry['id']).text(entry['id']));
+			})
+		});
+
+		$('#zones').on('change', function(){
+			//get zone geometry
+			const query = `https://swip.wiredhut.com/api/zones/${this.value}`;
+			$.getJSON(query, function(data){
+				var wkt = new Wkt.Wkt()
+				polygon = wkt.read(data['geom'])
+				first_component = polygon.components[0][0]
+				map.setView(L.CRS.EPSG21781.unproject(L.point(first_component['x'], first_component['y'])), 18);
+			})
+		});
+		
+	</script> 
 
 
 </body>
