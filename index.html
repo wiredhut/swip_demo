@@ -170,28 +170,35 @@
 		}
 
 
+		function update_forecast() {
+			var zone = $("#zones").val();
+			var datetime = $('*[name=date]').val()
+			if (zone) {
+				displayLoading();
+				const query = `https://swip.wiredhut.com/api/forecast?zone_id=${zone}&datetime=${datetime}&model=simple`;
+				fetch(query)
+					.then(response => response.json())
+					.then((json) => { return json.map(function(val){
+						unprojected = L.CRS.EPSG21781.unproject(L.point(val['x'], val['y']))
+						return {
+							"x": unprojected['lat'],
+							"y": unprojected['lng'],
+							"predicted": val['predicted']
+						}
+					})} )
+					.then((unprojected) => {
+						data = {
+							max:500,
+							data: unprojected
+						}
+						heatmapLayer.setData(data);
+						hideLoading();
+					})
+				}
+		}
+
 		$('*[name=date]').on('change', function(){
-			displayLoading();
-			var zone = $("#zones").val()
-			const query = `https://swip.wiredhut.com/api/forecast?zone_id=${zone}&datetime=${this.value}&model=simple`;
-			fetch(query)
-				.then(response => response.json())
-				.then((json) => { return json.map(function(val){
-					unprojected = L.CRS.EPSG21781.unproject(L.point(val['x'], val['y']))
-					return {
-						"x": unprojected['lat'],
-						"y": unprojected['lng'],
-						"predicted": val['predicted']
-					}
-				})} )
-				.then((unprojected) => {
-					data = {
-						max:500,
-						data: unprojected
-					}
-					heatmapLayer.setData(data);
-					hideLoading();
-				})
+			update_forecast(this.value);
 		});
 
 		function toggleDescription(show) {
@@ -240,6 +247,8 @@
 				first_component = polygon.components[0][0]
 				map.setView(L.CRS.EPSG21781.unproject(L.point(first_component['x'], first_component['y'])), 18);
 			})
+
+			update_forecast();
 		});
 
 	</script>
