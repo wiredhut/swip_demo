@@ -69,6 +69,8 @@
 	</div>
 
 	<script>
+	  var host = "https://swip.wiredhut.com";
+	
 	  $(function(){
 		$('*[name=date]').appendDtpicker({
 			"dateFormat":"YYYY-MM-DDThh:mm",
@@ -172,7 +174,7 @@
 			var datetime = $('*[name=date]').val()
 			if (zone) {
 				displayLoading();
-				const query = `https://swip.wiredhut.com/api/forecast?zone_id=${zone}&datetime=${datetime}&model=simple`;
+				const query = host+`/api/forecast?zone_id=${zone}&datetime=${datetime}&model=simple`;
 				fetch(query)
 					.then(response => response.json())
 					.then((json) => { return json.map(function(val){
@@ -186,10 +188,10 @@
 					.then((unprojected) => {
 						predicted_values = []
 						for (i in unprojected){
-							predicted_values.push(i['predicted']);
+							predicted_values.push(unprojected[i]['predicted']);
 						}
 						data = {
-							max: 500,
+							max: Math.max.apply(null, predicted_values),
 							min: 0,
 							data: unprojected
 						}
@@ -233,7 +235,7 @@
 		zone_dropdown.append('<option selected="true" disabled>Choose zone</option>');
 		zone_dropdown.prop('selectedIndex', 0);
 
-		const url = 'https://swip.wiredhut.com/api/zones/'
+		const url = host+'/api/zones/'
 		$.getJSON(url, function (data) {
 			$.each(data, function (key, entry) {
 				zone_dropdown.append($('<option></option>').attr('value', entry['id']).text(entry['id']));
@@ -242,7 +244,7 @@
 		
 		$('#zones').on('change', function(){
 			//get zone geometry
-			const query = `https://swip.wiredhut.com/api/zones/${this.value}`;
+			const query = host+`/api/zones/${this.value}`;
 			$.getJSON(query, function(data){
 				var wkt = new Wkt.Wkt()
 				polygon = wkt.read(data['geom'])
