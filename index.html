@@ -51,9 +51,6 @@
       <div id="project" class="tabcontent">
 		<label for="zones">Zone:</label>
 		<select name="zones" id="zones">
-			<option value="1">1</option>
-			<option value="2">2</option>
-			<option value="5">5</option>
 		</select>
 		Date:<input type="text" name="date" value="">
 		<div id="loading"></div>
@@ -187,8 +184,13 @@
 						}
 					})} )
 					.then((unprojected) => {
+						predicted_values = []
+						for (i in data){
+							values.push(data['predicted')
+						}
 						data = {
-							max:500,
+							max:Math.max.apply(null, predicted_values),
+							min: 0,
 							data: unprojected
 						}
 						heatmapLayer.setData(data);
