@@ -30,6 +30,7 @@
 	<script src="heatmap.js"></script>
 	<script src="leaflet-heatmap.js"></script>
 	<script src="wiket.js"></script>
+	<script src="rainbowvis.js"></script>
 
 	<script src="https://unpkg.com/leaflet-tilelayer-swiss@2.0.1/dist/Leaflet.TileLayer.Swiss.umd.js" crossorigin
         integrity="sha384-QQS8FVB6RhNfzlOqzJV3/V4P6YNJSs49djuAoMAh2NJ5BNaYxPCC1t14fwtcg90/"></script> 
@@ -53,12 +54,13 @@
 		<select name="zones" id="zones">
 		</select>
 		Date:<input type="text" name="date" value="">
+		<label for="max_value">Max legend value:</label>
+		<input type="number" id="max_value" name="max_value" value="500">
 		<div id="loading"></div>
       </div>
     </div>
 
     <div id="map" style="height: 100vh; width: 100vw; z-index: 0"></div>
-	<div class="tooltip" style="display: none; transform: translate(821px, 58px);">0</div>
 
 
 	<div id="heatmapLegend">
@@ -69,7 +71,7 @@
 	</div>
 
 	<script>
-	  var host = "https://swip.wiredhut.com";
+	  var host = "http://localhost:8080";
 	
 	  $(function(){
 		$('*[name=date]').appendDtpicker({
@@ -89,11 +91,13 @@
         var legendCtx = legendCanvas.getContext('2d');
         var gradientCfg = {};
 
+		
 		function updateLegend(data) {
           // the onExtremaChange callback gives us min, max, and the gradientConfig
           // so we can update the legend
           document.getElementById('min').innerHTML = data.min;
-          document.getElementById('max').innerHTML = data.max;
+          document.getElementById('max').innerHTML = $("#max_value").val();
+
           // regenerate gradient image
           if (data.gradient != gradientCfg) {
             gradientCfg = data.gradient;
@@ -129,6 +133,7 @@
 				updateLegend(data);
 			}
 		};
+		
 											
 	</script>
 
@@ -138,7 +143,7 @@
 	 	
 		var accessToken = 'pk.eyJ1IjoiYXJ0ZW1rb251Y2hvdndpcmVkaHV0IiwiYSI6ImNsMWo3amg3czBtMmUzYnFsNHFhMHZiMWQifQ.sWe8oS5qb0EfQeDd-oq_hQ';
 
-		var map = L.map('map', {crs: L.CRS.EPSG21781, maxZoom:22});
+		var map = L.map('map', {crs: L.CRS.EPSG21781, maxZoom:25});
  
 		var current_style = livehoods_style;
 
@@ -146,6 +151,29 @@
 		
 
 		map.setView(L.CRS.EPSG21781.unproject(L.point(682170.102908364962786, 250069.716387805819977)), 18);
+
+		//gradient
+		
+		function create_rainbow(){
+			var max_value = $("#max_value").val();
+			
+			var rainbow = new Rainbow(); 
+			rainbow.setNumberRange(1, max_value);
+			rainbow.setSpectrum('blue', 'green', 'yellow', 'red');
+
+			
+
+			return rainbow;
+		}
+
+		function update_rainbow_range(rainbow, max_value){
+			rainbow.setNumberRange(1, max_value);
+		}
+
+		var rainbow = create_rainbow();
+		var max_value = $("#max_value").val();
+		document.getElementById('max').innerHTML = max_value;
+		
 
 		L.control.zoom({
 		     position:'bottomright'
@@ -168,6 +196,34 @@
 			loader.classList.remove("display");
 		}
 
+		function get_grid(lv03_data) {
+			rectangles = []
+			for (let i in lv03_data) {
+				data = lv03_data[i];
+				ll = L.CRS.EPSG21781.unproject(L.point(data['x'], data['y']));
+				ur = L.CRS.EPSG21781.unproject(L.point(data['x']+100, data['y']+100));
+				
+				rect = get_rectangle(ll, ur, data['predicted']);
+				rectangles.push(rect)
+			}
+
+			return L.layerGroup(rectangles)
+		}
+
+		function get_rectangle(ll, ur, value) {
+			var bounds = [[ll['lat'], ll['lng']], [ur['lat'], ur['lng']]];
+
+			
+			var hexColor = '#' + rainbow.colourAt(value);
+			
+			rectangle =  L.rectangle(bounds, {color: hexColor, opacity:0.8, weight: 1, fill:true, fillColor: hexColor, fillOpacity: 0.8});
+			rectangle.bindPopup(value.toString());
+
+			return rectangle
+		}
+
+		let grid = null;
+		let forecast_json = null;
 
 		function update_forecast() {
 			var zone = $("#zones").val();
@@ -177,29 +233,32 @@
 				const query = host+`/api/forecast?zone_id=${zone}&datetime=${datetime}&model=simple`;
 				fetch(query)
 					.then(response => response.json())
-					.then((json) => { return json.map(function(val){
-						unprojected = L.CRS.EPSG21781.unproject(L.point(val['x'], val['y']))
-						return {
-							"x": unprojected['lat'],
-							"y": unprojected['lng'],
-							"predicted": val['predicted']
+					.then((json) => {
+						forecast_json = json
+						if (grid != null) {
+							map.removeLayer(grid)
 						}
-					})} )
-					.then((unprojected) => {
-						predicted_values = []
-						for (i in unprojected){
-							predicted_values.push(unprojected[i]['predicted']);
-						}
-						data = {
-							max: Math.max.apply(null, predicted_values),
-							min: 0,
-							data: unprojected
-						}
-						heatmapLayer.setData(data);
+						grid = get_grid(forecast_json)
+						grid.addTo(map)
 						hideLoading();
 					})
 				}
 		}
+
+		$("#max_value").on('change', function(){
+			var max_value = $("#max_value").val();
+
+			document.getElementById('max').innerHTML = max_value;
+
+			update_rainbow_range(rainbow, max_value);
+			if(grid != null) {
+				map.removeLayer(grid)
+			}
+			if (forecast_json != null){
+				grid = get_grid(forecast_json);
+				grid.addTo(map);
+			}
+		})
 
 		$('*[name=date]').on('change', function(){
 			update_forecast(this.value);
@@ -255,34 +314,6 @@
 			update_forecast();
 		});
 
-	</script>
-
-	<script>
-		/* tooltip code start */
-		var demoWrapper = document.querySelector('#map');
-		var tooltip = document.querySelector('.tooltip');
-		function updateTooltip(x, y, value) {
-		// + 15 for distance to cursor
-			var transl = 'translate(' + (x + 15) + 'px, ' + (y + 15) + 'px)';
-			tooltip.style.webkitTransform = transl;
-			tooltip.innerHTML = value;
-		};
-		demoWrapper.onmousemove = function(ev) {
-		var x = ev.layerX;
-		var y = ev.layerY;
-		// getValueAt gives us the value for a point p(x/y)
-		var value = heatmapLayer._heatmap.getValueAt({
-			x: x,
-			y: y
-		});
-		tooltip.style.display = 'block';
-		updateTooltip(x, y, value);
-		};
-		// hide tooltip on mouseout
-		demoWrapper.onmouseout = function() {
-		tooltip.style.display = 'none';
-		};
-		/* tooltip code end */
 	</script>
 
 
