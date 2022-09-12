@@ -51,9 +51,11 @@
       </div>
       <div id="project" class="tabcontent">
 		<label for="zones">Zone:</label>
-		<select name="zones" id="zones">
-		</select>
-		Date:<input type="text" name="date" value="">
+		<select name="zones" id="zones"></select>
+		<p>
+		<label for="date">Date:</lable>
+		<input type="text" name="date" id="date" value="">
+		</p>
 		<label for="max_value">Max legend value:</label>
 		<input type="number" id="max_value" name="max_value" value="500">
 		<div id="loading"></div>
@@ -80,8 +82,6 @@
 			"minuteInterval": 60
 		});
 		});
-
-		
 
 		// we want to display the gradient, so we have to draw it
         var legendCanvas = document.createElement('canvas');
