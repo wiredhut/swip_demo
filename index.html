@@ -37,6 +37,34 @@
 
 </head>
 <body>
+	<!-- START AUTH FORM-->
+	<div id="modal__background" class="modal__background">
+		<div class="modal__window">
+	
+			<form id="auth-form" class="auth-form" name="form-auth" method="post">
+	
+				<label class="auth-form__label">
+					<span class="auth-form__placeholder">email</span>
+					<input class="auth-form__input input-email" type="email" name="email" autocomplete="off" required>
+				</label>
+	
+				<label class="auth-form__label">
+					<span class="auth-form__placeholder">password</span>
+					<input class="auth-form__input input-password" type="password" name="password" autocomlete="off" required>
+					<div class="auth-form__toggler">
+						<i class="la la-eye auth-form__icon"></i>
+						<input type="checkbox" class="auth-form__checkbox password-toggler">
+					</div>
+				</label>
+	
+				<div class="auth-form__answer"></div>
+	
+				<input class="auth-form__submit" type="submit" value="Login">
+			</form>
+	
+		</div>
+	</div>
+	<!-- END AUTH FORM-->
 	<div class="headerInfo" onclick="toggleDescription(true)">
     	<div class='header'>SWIP DEMO</div>
     	<div class='project_info' onclick="toggleDescription(true)"><img src="./src/info.svg" style="width:35px;height:35px;center"></div>
@@ -73,8 +101,131 @@
 	</div>
 
 	<script>
-	  var host = "https://swip.wiredhut.com";
-	
+	  var host = "http://localhost:8080/swip";
+		
+		/* AUTH FORM */
+		window.onload = function() {
+			(function() {
+				const inputText = document.querySelectorAll('.auth-form__input');
+
+				inputText.forEach( function(input) {
+					input.addEventListener('focus', function() {
+						this.classList.add('focus');
+						this.parentElement.querySelector('.auth-form__placeholder').classList.add('focus');
+					});
+					input.addEventListener('blur', function() {
+						this.classList.remove('focus');
+						if (! this.value) {
+							this.parentElement.querySelector('.auth-form__placeholder').classList.remove('focus');
+						}
+					});
+				});
+			})();
+
+			(function() {
+				const togglers = document.querySelectorAll('.password-toggler');
+
+				togglers.forEach( function(checkbox) {
+					checkbox.addEventListener('change', function() {
+
+						const toggler = this.parentElement,
+							input   = toggler.parentElement.querySelector('.input-password'),
+							icon    = toggler.querySelector('.auth-form__icon');
+
+						if (checkbox.checked) {
+							input.type = 'text';
+							icon.classList.remove('la-eye')
+							icon.classList.add('la-eye-slash');
+						}
+
+						else
+						{
+							input.type = 'password';
+							icon.classList.remove('la-eye-slash')
+							icon.classList.add('la-eye');
+						}
+					});
+				});
+			})();
+		};
+
+		function getCookie(cname) {
+			let name = cname + "=";
+			let decodedCookie = decodeURIComponent(document.cookie);
+			let ca = decodedCookie.split(';');
+			for(let i = 0; i <ca.length; i++) {
+				let c = ca[i];
+				while (c.charAt(0) == ' ') {
+				c = c.substring(1);
+				}
+				if (c.indexOf(name) == 0) {
+				return c.substring(name.length, c.length);
+				}
+			}
+			return "";
+		}
+
+		function setCookie(cname, cvalue, exdays) {
+			const d = new Date();
+			d.setTime(d.getTime() + (exdays*24*60*60*1000));
+			let expires = "expires="+ d.toUTCString();
+			document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+		}
+
+		function checkAccessToken() {
+			accessToken = getCookie("access_token")
+			console.log(accessToken)
+			if (accessToken != "") {
+				document.getElementById("modal__background").style.display='none';
+			}
+		}
+
+		checkAccessToken();
+
+		
+
+	  const auth_form = document.getElementById("auth-form");
+
+	  
+	  auth_form.addEventListener("submit", function(e){
+		e.preventDefault();
+
+		const placeholders = document.querySelectorAll('.auth-form__placeholder');
+		const answerContainer = this.querySelector('.auth-form__answer');
+
+		fetch(host+'/api/token/', {
+			method: 'POST',
+			headers:{
+			'Content-Type': 'application/x-www-form-urlencoded'
+			},    
+			body: new URLSearchParams({
+				'username': this.elements.email.value,
+				'password': this.elements.password.value,
+			})
+		})
+		.then(
+			(response) => {
+				if (!response.ok){
+					placeholders.forEach(function(placeholder) {
+						placeholder.classList.remove('focus');
+					});
+					this.elements.email.value = '';
+					this.elements.password.value = '';
+					answerContainer.innerHTML = '<span class="text-danger">Invalid email or password</span>';
+				}
+				else {
+					return response.json()
+				}
+	  		})
+		.then((json) => {
+			access_token = json['access_token']
+			setCookie("access_token", access_token, 7)
+			checkAccessToken();
+		});
+		
+	  })
+	  
+
 	  $(function(){
 		$('*[name=date]').appendDtpicker({
 			"dateFormat":"YYYY-MM-DDThh:mm",
@@ -294,12 +445,19 @@
 		zone_dropdown.append('<option selected="true" disabled>Choose zone</option>');
 		zone_dropdown.prop('selectedIndex', 0);
 
-		const url = host+'/api/zones/'
-		$.getJSON(url, function (data) {
-			$.each(data, function (key, entry) {
+		const url = host+'/api/zones'
+		fetch(url, {
+			method: 'GET',
+			headers:{
+				'Authorization': 'Bearer ' + getCookie("access_token")
+			},
+		})
+		.then((response) => {
+				data = response.json()
+				$.each(data, function (key, entry) {
 				zone_dropdown.append($('<option></option>').attr('value', entry['id']).text(entry['id']));
 			})
-		});
+	  	})
 		
 		$('#zones').on('change', function(){
 			//get zone geometry
