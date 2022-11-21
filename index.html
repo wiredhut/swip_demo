@@ -8,10 +8,15 @@
 	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.8.0/dist/leaflet.css"
    integrity="sha512-hoalWLoI8r4UszCkZ5kL8vayOGVae1oxXe/2A4AO6J9+580uKHDO3JdHb7NzwwzK5xr/Fs0W40kiNHxM9vyTtQ=="
    crossorigin=""/>
+   
 
 	<!-- JQuery-->
 	<script type="text/javascript" src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
 
+	<!-- W3 -->
+	<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"> 
+	
 	<!-- data picker -->
 	<script src="jquery.simple-dtpicker.js"></script>
 	<link type="text/css" href="jquery.simple-dtpicker.css" rel="stylesheet" />
@@ -38,7 +43,7 @@
 </head>
 <body>
 	<!-- START AUTH FORM-->
-	<div id="modal__background" class="modal__background">
+	<div id="modal__background" class="modal__background w3-modal">
 		<div class="modal__window">
 	
 			<form id="auth-form" class="auth-form" name="form-auth" method="post">
@@ -86,6 +91,26 @@
 		</p>
 		<label for="max_value">Max legend value:</label>
 		<input type="number" id="max_value" name="max_value" value="500">
+		
+		<h3>Events</h3>
+		<table id="eventsTable" class="w3-table-all">
+			<thead>
+				<tr>
+					<th>Event name</th>
+					<th>Start</th>
+					<th>End</th>
+					<th>Delete</th>
+				</tr>
+			</thead>
+			<tbody id="eventsTableBody"></tbody>
+		</table>
+
+		<div style="margin-top:2vh ;">
+			<label for="fileupload">Add event:</label>
+			<input id="fileupload" type="file" name="fileupload" />
+			<button id="upload-button" onclick="uploadEventFile()"> Upload </button>
+		</div>
+		
 		<div id="loading"></div>
       </div>
     </div>
@@ -147,6 +172,8 @@
 					});
 				});
 			})();
+
+			getEvents();
 		};
 
 		function getCookie(cname) {
@@ -173,10 +200,100 @@
 		}
 
 		function checkAccessToken() {
-			accessToken = getCookie("access_token")
-			console.log(accessToken)
+			var accessToken = getCookie("access_token")
+			console.log("acces_token:"+accessToken)
 			if (accessToken != "") {
 				document.getElementById("modal__background").style.display='none';
+				getEvents();
+			}
+		}
+
+		async function deleteEvent(event_index){
+			var table = document.getElementById("eventsTableBody")
+			var event_name = table.rows[event_index].cells[0].textContent
+			
+			//fetch delete event
+			const access_token = getCookie("access_token")
+			if (access_token != "") {
+				const url = host + `/api/heatmaps/events/${event_name}`
+
+				fetch(url, {
+					method: "DELETE",
+					headers: {
+						'Authorization': 'Bearer ' + access_token
+					}
+				})
+				.then((response) => {
+					if(response.ok){
+						table.deleteRow(event_index)
+						update_forecast()
+					}
+				})
+			}
+		}
+
+		async function getEvents() {
+			const access_token = getCookie("access_token")
+			if (access_token != ""){
+				const url = host + "/api/heatmaps/events"
+
+				fetch(url, {
+					method: "GET",
+					headers: {
+						'Authorization': 'Bearer ' + access_token
+					}
+				})
+				.then((response) => response.json())
+				.then((result) => {
+					$("#eventsTable tbody tr").remove()
+					var table = document.getElementById("eventsTableBody")
+					for (var index in result){
+						var row = table.insertRow(-1) ;
+						
+						var nameCell = row.insertCell(0);
+						var startCell = row.insertCell(1);
+						var endCell = row.insertCell(2);
+						var delCell = row.insertCell(3);
+
+						var event = result[index]
+
+						nameCell.innerHTML = event['event_name'];
+						startCell.innerHTML = event['start'];
+						endCell.innerHTML = event['end'];
+						delCell.innerHTML = `<a onclick=deleteEvent(${index})><i class="fa fa-trash" style="font-size:2em"></i></a>`
+					}
+					
+				})
+			}
+		}
+
+
+		async function uploadEventFile() {
+			const acces_token = getCookie("access_token")
+			if (acces_token != ""){
+				let formData = new FormData()
+				formData.append("file", fileupload.files[0])
+
+				const url = host + "/api/heatmaps/events/uploadfile"
+				fetch(url, {
+					method: 'POST',
+					headers:{
+						'Authorization': 'Bearer ' + acces_token
+					},
+					body: formData
+				})
+				.then((response) => {
+					if (response.ok) {
+						return response.json();
+					}
+					return response.json().then(error => {
+						alert(JSON.stringify(error))
+					} )
+				})
+				.then((result) => {
+					getEvents();
+					update_forecast();
+				})
 			}
 		}
 
@@ -218,7 +335,7 @@
 				}
 	  		})
 		.then((json) => {
-			access_token = json['access_token']
+			var access_token = json['access_token']
 			setCookie("access_token", access_token, 7)
 			checkAccessToken();
 		});
@@ -354,7 +471,7 @@
 				ll = L.CRS.EPSG21781.unproject(L.point(data['x'], data['y']));
 				ur = L.CRS.EPSG21781.unproject(L.point(data['x']+100, data['y']+100));
 				
-				rect = get_rectangle(ll, ur, data['predicted']);
+				rect = get_rectangle(ll, ur, data['score']);
 				rectangles.push(rect)
 			}
 
@@ -376,24 +493,140 @@
 		let grid = null;
 		let forecast_json = null;
 
-		function update_forecast() {
-			var zone = $("#zones").val();
-			var datetime = $('*[name=date]').val()
-			if (zone) {
-				displayLoading();
-				const query = host+`/api/forecast?zone_id=${zone}&datetime=${datetime}&model=simple`;
-				fetch(query)
+		function get_forecast(zone_id, datetime){
+			const query = host+`/api/heatmaps/hourly/forecast?zone_id=${zone_id}&datetime=${datetime}&model=simple`;
+			var swip_access_token = getCookie("access_token")
+			if (swip_access_token != ""){
+				return fetch(query,{
+						method: 'GET',
+						headers:{
+							'Authorization': 'Bearer ' + swip_access_token
+						},
+					})
 					.then(response => response.json())
 					.then((json) => {
-						forecast_json = json
-						if (grid != null) {
-							map.removeLayer(grid)
+						var forecast = {}
+						json.forEach(function(item){
+							forecast[item['tile_id']] = {
+								"x": item["x"],
+								"y": item["y"],
+								"score": item["score"]
+							}
+						})
+						return forecast
+						});
+			}
+		}
+
+		function get_events(datetime){
+			const query = host+`/api/heatmaps/events/${datetime}`;
+			var swip_access_token = getCookie("access_token")
+			if (swip_access_token != "") {
+			return fetch(query,{
+					method: 'GET',
+					headers:{
+						'Authorization': 'Bearer ' + swip_access_token
+					},
+				})
+				.then(response => response.json())
+				.then((json) => {	
+					var events = {}
+					json.forEach(function(item){
+						events[item['tile_id']] = {
+							"score": item["score"]
 						}
-						grid = get_grid(forecast_json)
-						grid.addTo(map)
-						hideLoading();
 					})
-				}
+					return events
+				})
+			}
+		}
+
+		function get_last_record_datetime(zone_id){
+			var access_token = getCookie("access_token")
+			const query = host + `/api/heatmaps/hourly/last?zone_id=${zone_id}`
+			if (access_token != "") {
+				return fetch(query, {
+					method: 'GET',
+					headers: {
+						'Authorization': 'Bearer ' + access_token
+					}
+				})
+				.then((response) => response.json())
+				.then((json) => {
+					return json['last_datetime']
+				})
+			}
+		}
+
+		function get_history(zone_id, datetime){
+			const query = host+`/api/heatmaps/hourly?zone_id=${zone_id}&datetime=${datetime}`;
+			var swip_access_token = getCookie("access_token")
+			if (swip_access_token != ""){
+				return fetch(query,{
+						method: 'GET',
+						headers:{
+							'Authorization': 'Bearer ' + swip_access_token
+						},
+					})
+					.then(response => response.json())
+					.then((json) => {
+						return json;
+					});
+			}
+		}
+
+		function update_forecast() {
+			var zone_id = $("#zones").val();
+			var datetime = $('*[name=date]').val()
+			if (zone_id && swip_access_token) {
+				displayLoading();
+				get_last_record_datetime(zone_id).then(
+					(last_time) => {
+						lastDate = new Date(last_time)
+						requestDate = new Date(datetime)
+						if (requestDate < lastDate) {
+							get_history(zone_id, datetime).then(
+								(forecasts) => {
+									if (grid != null) {
+										map.removeLayer(grid)
+									}
+									grid = get_grid(forecasts)
+									grid.addTo(map)
+									hideLoading();
+								}
+							)
+						}
+						else {
+							get_forecast(zone_id, datetime).then(
+								(forecast_data) => {
+									get_events(datetime).then(
+										(events_data) => {
+											console.log(forecast_data)
+											console.log(events_data)
+											//Нужно заменить score из предсказания скором из cобытий
+
+											for (const forecast_key in forecast_data){
+												var event_in_forecast = events_data[forecast_key]
+												if (event_in_forecast) {
+													forecast_data[forecast_key]['score'] = event_in_forecast['score']
+												}
+											}
+											var forecasts = Object.values(forecast_data)
+
+											if (grid != null) {
+												map.removeLayer(grid)
+											}
+											grid = get_grid(forecasts)
+											grid.addTo(map)
+											hideLoading();
+										}
+									)
+								}
+							)
+						}
+					}
+				)
+			}
 		}
 
 		$("#max_value").on('change', function(){
@@ -446,30 +679,46 @@
 		zone_dropdown.prop('selectedIndex', 0);
 
 		const url = host+'/api/zones'
-		fetch(url, {
-			method: 'GET',
-			headers:{
-				'Authorization': 'Bearer ' + getCookie("access_token")
-			},
-		})
-		.then((response) => {
-				data = response.json()
-				$.each(data, function (key, entry) {
-				zone_dropdown.append($('<option></option>').attr('value', entry['id']).text(entry['id']));
+		
+		var swip_access_token = getCookie('access_token')
+		if (swip_access_token != "") {
+			fetch(url, {
+				method: 'GET',
+				headers:{
+					'Authorization': 'Bearer ' + swip_access_token
+				},
 			})
-	  	})
+			.then(response => response.json())
+			.then((data) => {
+					console.log(data)
+					data.forEach(function(item){
+						zone_dropdown.append($('<option></option>').attr('value', item['id']).text(item['id']));
+					})
+				})
+		}
 		
 		$('#zones').on('change', function(){
 			//get zone geometry
-			const query = host+`/api/zones/${this.value}`;
-			$.getJSON(query, function(data){
-				var wkt = new Wkt.Wkt()
-				polygon = wkt.read(data['geom'])
-				first_component = polygon.components[0][0]
-				map.setView(L.CRS.EPSG21781.unproject(L.point(first_component['x'], first_component['y'])), 18);
-			})
+			const url = host+`/api/zones/${this.value}`
+			var swip_access_token = getCookie('access_token')
+			if (swip_access_token != "") {
+				fetch(url, {
+					method: 'GET',
+					headers:{
+						'Authorization': 'Bearer ' + swip_access_token
+					},
+				})
+				.then(response => response.json())
+				.then((data) => {
+						console.log(data)
+						var wkt = new Wkt.Wkt()
+						polygon = wkt.read(data['geom'])
+						first_component = polygon.components[0][0]
+						map.setView(L.CRS.EPSG21781.unproject(L.point(first_component['x'], first_component['y'])), 18);
+					});
 
-			update_forecast();
+				update_forecast();
+			}
 		});
 
 	</script>

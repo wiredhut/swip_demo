@@ -39,7 +39,7 @@ p {
   
 }
 
-#heatmapLegend { background:white; position:absolute; top:0; right:0; padding:10px; }
+#heatmapLegend { background:white; position:absolute; top:0; right:0; padding:10px; color:#000000 }
 #min { float:left; }
 #max { float:right; }
 
@@ -115,13 +115,13 @@ cursor: pointer;
 #description {
   position: absolute;
   box-sizing: border-box;
-  max-width: 600px;
+  max-width: 650px;
   width: 100%;
 	background-color: #c9ccda;
   padding: 10px 10px 0;
   overflow-y: auto;
   height: 100%;
-  z-index: 10;
+  z-index: 2;
   transition: all 0.5s ease-in;
   opacity: 0.95;
 }
@@ -185,7 +185,7 @@ cursor: pointer;
 }
 
 .tabcontent {
-  max-width: 505px;
+  max-width: 600px;
   margin-left: 21px;
   margin-top: 29px;
 	font-size: 18px;
@@ -223,6 +223,11 @@ body {
 .text-danger {
   color: #dc3545;
 }
+
+#modal__background {
+  background-color: rgb(0,0,0);
+}
+
 .modal__background {
   height: 100vh;
   display: -webkit-box;
