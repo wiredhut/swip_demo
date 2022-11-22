@@ -199,12 +199,33 @@
 			document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
 		}
 
+		function get_zones(){
+			var url = host + '/api/zones'
+
+			var swip_access_token = getCookie('access_token')
+			if (swip_access_token != "") {
+				fetch(url, {
+					method: 'GET',
+					headers:{
+						'Authorization': 'Bearer ' + swip_access_token
+					},
+				})
+				.then(response => response.json())
+				.then((data) => {
+						data.forEach(function(item){
+							zone_dropdown.append($('<option></option>').attr('value', item['id']).text(item['id']));
+						})
+					})
+			}
+		}
+
+
 		function checkAccessToken() {
 			var accessToken = getCookie("access_token")
-			console.log("acces_token:"+accessToken)
 			if (accessToken != "") {
 				document.getElementById("modal__background").style.display='none';
 				getEvents();
+				get_zones();
 			}
 		}
 
@@ -575,9 +596,13 @@
 			}
 		}
 
+		
 		function update_forecast() {
 			var zone_id = $("#zones").val();
 			var datetime = $('*[name=date]').val()
+			
+			swip_access_token = getCookie("access_token")
+
 			if (zone_id && swip_access_token) {
 				displayLoading();
 				get_last_record_datetime(zone_id).then(
@@ -587,10 +612,11 @@
 						if (requestDate < lastDate) {
 							get_history(zone_id, datetime).then(
 								(forecasts) => {
+									forecast_json = forecasts
 									if (grid != null) {
 										map.removeLayer(grid)
 									}
-									grid = get_grid(forecasts)
+									grid = get_grid(forecast_json)
 									grid.addTo(map)
 									hideLoading();
 								}
@@ -601,8 +627,7 @@
 								(forecast_data) => {
 									get_events(datetime).then(
 										(events_data) => {
-											console.log(forecast_data)
-											console.log(events_data)
+											
 											//Нужно заменить score из предсказания скором из cобытий
 
 											for (const forecast_key in forecast_data){
@@ -611,12 +636,13 @@
 													forecast_data[forecast_key]['score'] = event_in_forecast['score']
 												}
 											}
-											var forecasts = Object.values(forecast_data)
+
+											forecast_json = Object.values(forecast_data)
 
 											if (grid != null) {
 												map.removeLayer(grid)
 											}
-											grid = get_grid(forecasts)
+											grid = get_grid(forecast_json)
 											grid.addTo(map)
 											hideLoading();
 										}
@@ -642,6 +668,7 @@
 				grid = get_grid(forecast_json);
 				grid.addTo(map);
 			}
+
 		})
 
 		$('*[name=date]').on('change', function(){
@@ -680,22 +707,7 @@
 
 		const url = host+'/api/zones'
 		
-		var swip_access_token = getCookie('access_token')
-		if (swip_access_token != "") {
-			fetch(url, {
-				method: 'GET',
-				headers:{
-					'Authorization': 'Bearer ' + swip_access_token
-				},
-			})
-			.then(response => response.json())
-			.then((data) => {
-					console.log(data)
-					data.forEach(function(item){
-						zone_dropdown.append($('<option></option>').attr('value', item['id']).text(item['id']));
-					})
-				})
-		}
+		
 		
 		$('#zones').on('change', function(){
 			//get zone geometry
@@ -710,7 +722,7 @@
 				})
 				.then(response => response.json())
 				.then((data) => {
-						console.log(data)
+						
 						var wkt = new Wkt.Wkt()
 						polygon = wkt.read(data['geom'])
 						first_component = polygon.components[0][0]
