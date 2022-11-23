@@ -492,21 +492,32 @@
 				ll = L.CRS.EPSG21781.unproject(L.point(data['x'], data['y']));
 				ur = L.CRS.EPSG21781.unproject(L.point(data['x']+100, data['y']+100));
 				
-				rect = get_rectangle(ll, ur, data['score']);
+				rect = get_rectangle(ll, ur, data);
 				rectangles.push(rect)
 			}
 
 			return L.layerGroup(rectangles)
 		}
 
-		function get_rectangle(ll, ur, value) {
+		function get_rectangle(ll, ur, data) {
 			var bounds = [[ll['lat'], ll['lng']], [ur['lat'], ur['lng']]];
 
 			
-			var hexColor = '#' + rainbow.colourAt(value);
+			var hexColor = '#' + rainbow.colourAt(data['score']);
 			
 			rectangle =  L.rectangle(bounds, {color: hexColor, opacity:0.8, weight: 1, fill:true, fillColor: hexColor, fillOpacity: 0.8});
-			rectangle.bindPopup(value.toString());
+			
+		
+			copy_data = JSON.parse(JSON.stringify(data))
+			exclude_values = ['x', 'y', 'datetime']
+			exclude_values.forEach(v => delete copy_data[v]);
+
+			pops = []
+			for (key in copy_data) {
+				pops.push(`${key}:${copy_data[key]}`)
+			}
+			pop_string = pops.join('</br>')
+			rectangle.bindPopup(pop_string, {maxWidth:500});
 
 			return rectangle
 		}
@@ -529,6 +540,7 @@
 						var forecast = {}
 						json.forEach(function(item){
 							forecast[item['tile_id']] = {
+								"tileId": item['tile_id'],
 								"x": item["x"],
 								"y": item["y"],
 								"score": item["score"]
@@ -553,9 +565,7 @@
 				.then((json) => {	
 					var events = {}
 					json.forEach(function(item){
-						events[item['tile_id']] = {
-							"score": item["score"]
-						}
+						events[item['tile_id']] = item
 					})
 					return events
 				})
@@ -628,15 +638,14 @@
 									get_events(datetime).then(
 										(events_data) => {
 											
-											//Нужно заменить score из предсказания скором из cобытий
-
 											for (const forecast_key in forecast_data){
 												var event_in_forecast = events_data[forecast_key]
 												if (event_in_forecast) {
 													forecast_data[forecast_key]['score'] = event_in_forecast['score']
+													forecast_data[forecast_key]['event'] = event_in_forecast['event_name']
 												}
 											}
-
+											console.log(forecast_data)
 											forecast_json = Object.values(forecast_data)
 
 											if (grid != null) {
