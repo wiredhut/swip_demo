@@ -213,7 +213,8 @@
 				.then(response => response.json())
 				.then((data) => {
 						data.forEach(function(item){
-							zone_dropdown.append($('<option></option>').attr('value', item['id']).text(item['id']));
+							console.log(item);
+							zone_dropdown.append($('<option></option>').attr('value', item['id']).text(item['name']));
 						})
 					})
 			}
