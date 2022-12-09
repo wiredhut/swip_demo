@@ -176,6 +176,10 @@
 			getEvents();
 		};
 
+		function isFloat(n){
+			return Number(n) === n && n % 1 !== 0;
+		}
+
 		function getCookie(cname) {
 			let name = cname + "=";
 			let decodedCookie = decodeURIComponent(document.cookie);
@@ -213,7 +217,6 @@
 				.then(response => response.json())
 				.then((data) => {
 						data.forEach(function(item){
-							console.log(item);
 							zone_dropdown.append($('<option></option>').attr('value', item['id']).text(item['name']));
 						})
 					})
@@ -515,7 +518,24 @@
 
 			pops = []
 			for (key in copy_data) {
-				pops.push(`${key}:${copy_data[key]}`)
+				let value = copy_data[key]
+				
+
+				if (copy_data[key] == -1){
+					value = "No data"
+				}
+				if (isFloat(copy_data[key])){
+					value = copy_data[key].toFixed(3)
+				}
+				if (Array.isArray(copy_data[key])){
+					value = copy_data[key].map(function(x){
+						if (isFloat(x)){
+							return x.toFixed(3)
+						}
+						return x
+					})
+				}
+				pops.push(`${key}:${value}`)
 			}
 			pop_string = pops.join('</br>')
 			rectangle.bindPopup(pop_string, {maxWidth:500});
@@ -646,7 +666,7 @@
 													forecast_data[forecast_key]['event'] = event_in_forecast['event_name']
 												}
 											}
-											console.log(forecast_data)
+											
 											forecast_json = Object.values(forecast_data)
 
 											if (grid != null) {
