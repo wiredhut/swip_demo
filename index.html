@@ -525,12 +525,12 @@
 					value = "No data"
 				}
 				if (isFloat(copy_data[key])){
-					value = copy_data[key].toFixed(3)
+					value = `${(100*copy_data[key]).toFixed(1)}%`
 				}
 				if (Array.isArray(copy_data[key])){
 					value = copy_data[key].map(function(x){
 						if (isFloat(x)){
-							return x.toFixed(3)
+							return `${(100*x).toFixed(1)}%`
 						}
 						return x
 					})
@@ -622,6 +622,7 @@
 					})
 					.then(response => response.json())
 					.then((json) => {
+						console.log(json);
 						return json;
 					});
 			}
